@@ -693,18 +693,24 @@
       lista.forEach(ap => {
         const regAprendiz = registrosClaseActual.find(r => String(r.numDoc) === String(ap.numDoc));
         
-        let badgeClaseActual = '<span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Sin Marcar</span>';
+        let badgeClaseActual = '<span class="bg-amber-200 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400">⏳ En Espera</span>';
+        let estiloTarjeta = 'bg-amber-50/60 border-amber-200 hover:bg-amber-100/50';
+
         if (regAprendiz) {
           if (regAprendiz.estado === "Presente") {
             cantPresentes++;
-            badgeClaseActual = '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Presente</span>';
+            badgeClaseActual = '<span class="bg-emerald-200 text-emerald-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-400">✓ Presente</span>';
+            estiloTarjeta = 'bg-emerald-100/80 border-emerald-300 hover:bg-emerald-100 shadow-sm';
           } else if (regAprendiz.estado === "Llegada Tarde") {
             cantTardes++;
-            badgeClaseActual = '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">⏱️ Tarde</span>';
+            badgeClaseActual = '<span class="bg-amber-300 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500">⏱️ Tarde</span>';
+            estiloTarjeta = 'bg-amber-100 border-amber-300 hover:bg-amber-150';
           } else if (regAprendiz.estado === "Inasistencia Justificada") {
-            badgeClaseActual = '<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">📝 Excusa</span>';
+            badgeClaseActual = '<span class="bg-blue-200 text-blue-900 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-400">📝 Excusa</span>';
+            estiloTarjeta = 'bg-blue-50 border-blue-200 hover:bg-blue-100';
           } else if (regAprendiz.estado === "Inasistencia") {
-            badgeClaseActual = '<span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">❌ Ausente</span>';
+            badgeClaseActual = '<span class="bg-rose-200 text-rose-900 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-400">❌ Ausente</span>';
+            estiloTarjeta = 'bg-rose-50 border-rose-200 hover:bg-rose-100';
           }
         } else {
           cantSinMarcar++;
@@ -743,13 +749,13 @@
         `;
 
         cont.innerHTML += `
-          <div class="item-aprendiz flex flex-col md:flex-row md:items-center justify-between p-3.5 bg-slate-50 border rounded-xl hover:bg-slate-100 transition gap-3" data-nombre="${ap.nombre.toLowerCase()} ${ap.apellidos.toLowerCase()}" data-doc="${ap.numDoc}">
+          <div class="item-aprendiz flex flex-col md:flex-row md:items-center justify-between p-3.5 border-2 rounded-xl transition gap-3 ${estiloTarjeta}" data-nombre="${ap.nombre.toLowerCase()} ${ap.apellidos.toLowerCase()}" data-doc="${ap.numDoc}">
             <div>
               <div class="flex items-center space-x-2">
                 <p class="font-bold text-slate-800">${ap.nombre} ${ap.apellidos}</p>
                 ${badgeClaseActual}
               </div>
-              <p class="text-xs text-slate-500">${ap.tipoDoc}: ${ap.numDoc} | Inasistencias: <strong class="text-rose-600">${ap.fallas || 0}</strong> | Tardanzas: <strong class="text-amber-600">${ap.tardanzas || 0}</strong> | Excusas: <strong class="text-blue-600">${ap.excusas || 0}</strong></p>
+              <p class="text-xs text-slate-600">${ap.tipoDoc}: ${ap.numDoc} | Inasistencias: <strong class="text-rose-600">${ap.fallas || 0}</strong> | Tardanzas: <strong class="text-amber-600">${ap.tardanzas || 0}</strong> | Excusas: <strong class="text-blue-600">${ap.excusas || 0}</strong></p>
             </div>
             <div class="flex flex-wrap space-x-1.5 space-y-1 sm:space-y-0">
               ${botonesHTML}
