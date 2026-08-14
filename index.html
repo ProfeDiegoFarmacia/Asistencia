@@ -30,8 +30,11 @@
         <button id="btnTabInformes" onclick="cambiarTab('informes')" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg font-medium transition text-sm shadow">
           <i class="fa-solid fa-chart-line mr-1.5"></i>Informes
         </button>
-        <button onclick="abrirModalPINInstructor()" class="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg font-medium transition text-sm shadow">
+        <button id="btnPanelInstructorNav" onclick="abrirModalPINInstructor()" class="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg font-medium transition text-sm shadow">
           <i class="fa-solid fa-user-shield mr-1.5"></i>Panel Instructor
+        </button>
+        <button id="btnCerrarSesionInstructor" onclick="cerrarSesionInstructor()" class="hidden bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-lg font-medium transition text-sm shadow" title="Cerrar Sesión de Profesor">
+          <i class="fa-solid fa-right-from-bracket"></i>
         </button>
       </div>
     </div>
@@ -437,7 +440,7 @@
   </div>
 
   <div id="modalTarde" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50 no-imprimir">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border-t-4 border-amber-500">
       <div class="flex items-center space-x-3 text-amber-600 border-b pb-3">
         <i class="fa-solid fa-clock text-2xl"></i>
         <h3 class="font-bold text-lg text-slate-800">Registro de Llegada Tarde</h3>
@@ -491,8 +494,31 @@
 
     window.onload = function() {
       poblarSelectorClases();
+      comprobarSesionInstructorLocal();
       obtenerFichasServidor();
     };
+
+    function comprobarSesionInstructorLocal() {
+      const sesionGuardada = localStorage.getItem("sesion_instructor_sena");
+      if (sesionGuardada === "AUTORIZADO") {
+        esInstructorAutenticado = true;
+        document.getElementById('panelInstructorBarra').classList.remove('hidden');
+        document.getElementById('btnTabInformes').classList.remove('hidden');
+        document.getElementById('seccionListaCompletaInstructor').classList.remove('hidden');
+        document.getElementById('btnCerrarSesionInstructor').classList.remove('hidden');
+      }
+    }
+
+    function cerrarSesionInstructor() {
+      localStorage.removeItem("sesion_instructor_sena");
+      esInstructorAutenticado = false;
+      document.getElementById('panelInstructorBarra').classList.add('hidden');
+      document.getElementById('btnTabInformes').classList.add('hidden');
+      document.getElementById('seccionListaCompletaInstructor').classList.add('hidden');
+      document.getElementById('btnCerrarSesionInstructor').classList.add('hidden');
+      cambiarTab('asistencia');
+      alert("Sesión de instructor cerrada.");
+    }
 
     function poblarSelectorClases() {
       const select = document.getElementById('selectNumeroClase');
@@ -524,10 +550,12 @@
       const pin = document.getElementById('inputPIN').value;
       if (pin === PIN_INSTRUCTOR) {
         esInstructorAutenticado = true;
+        localStorage.setItem("sesion_instructor_sena", "AUTORIZADO");
         cerrarModal('modalPINInstructor');
         document.getElementById('panelInstructorBarra').classList.remove('hidden');
         document.getElementById('btnTabInformes').classList.remove('hidden');
         document.getElementById('seccionListaCompletaInstructor').classList.remove('hidden');
+        document.getElementById('btnCerrarSesionInstructor').classList.remove('hidden');
         verificarEstadoClaseYAprendices();
         alert("¡Acceso como Instructor Concedido!");
       } else {
@@ -587,7 +615,7 @@
 
       if (modoEstado === "ABIERTA") {
         caja.className = "p-4 rounded-xl text-center font-extrabold border-2 space-y-1 bg-emerald-50 border-emerald-300 text-emerald-800 animate-pulse";
-        label.innerText = "🟢 Marcación Normal Habilitada hace:";
+        label.innerText = "🟢 Marcación Habilitada hace:";
       } else {
         caja.className = "p-4 rounded-xl text-center font-extrabold border-2 space-y-1 bg-amber-50 border-amber-300 text-amber-800";
         label.innerText = "🟡 Marcación Extemporánea (Llegada Tarde) activa hace:";
@@ -612,6 +640,13 @@
     function detenetCronometroEnVivo() {
       if (intervaloCronometro) clearInterval(intervaloCronometro);
       document.getElementById('cajaCronometroPublico').classList.add('hidden');
+    }
+
+    function calcularMinutosTranscurridos(horaAperturaStr) {
+      if (!horaAperturaStr) return 0;
+      const apertura = new Date(horaAperturaStr);
+      const ahora = new Date();
+      return Math.floor((ahora - apertura) / 60000);
     }
 
     function buscarYMarcarAprendizPublico() {
@@ -659,9 +694,15 @@
         return;
       }
 
-      const estadoMarcacion = infoClase.estado === "TARDE_HABILITADA" ? "Llegada Tarde" : "Presente";
+      const minutosClase = calcularMinutosTranscurridos(infoClase.horaApertura);
 
-      iniciarMarcacion(numFicha, modulo, aprendiz.numDoc, `${aprendiz.nombre} ${aprendiz.apellidos}`, estadoMarcacion, null, infoClase.horaApertura, false);
+      // SI PASARON MÁS DE 15 MINUTOS O ESTÁ EN ESTADO TARDE, SE EXIGE MOTIVO
+      if (minutosClase > 15 || infoClase.estado === "TARDE_HABILITADA") {
+        abrirModalTarde(numFicha, modulo, aprendiz.numDoc, `${aprendiz.nombre} ${aprendiz.apellidos}`, aprendiz.tardanzas || 0, null, infoClase.horaApertura, false);
+      } else {
+        iniciarMarcacion(numFicha, modulo, aprendiz.numDoc, `${aprendiz.nombre} ${aprendiz.apellidos}`, "Presente", null, infoClase.horaApertura, false);
+      }
+
       document.getElementById('inputDocAprendizPublico').value = "";
     }
 
@@ -722,13 +763,13 @@
             <button onclick="iniciarMarcacion('${numFicha}', '${modulo}', '${ap.numDoc}', '${ap.nombre} ${ap.apellidos}', 'Presente', this, '${horaAperturaStr}', true)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg transition">
               <i class="fa-solid fa-check mr-1"></i>Presente
             </button>
-            <button onclick="abrirModalTarde('${numFicha}', '${modulo}', '${ap.numDoc}', '${ap.nombre} ${ap.apellidos}', ${ap.tardanzas || 0}, this, '${horaAperturaStr}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg transition">
+            <button onclick="abrirModalTarde('${numFicha}', '${modulo}', '${ap.numDoc}', '${ap.nombre} ${ap.apellidos}', ${ap.tardanzas || 0}, this, '${horaAperturaStr}', true)" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg transition">
               <i class="fa-solid fa-clock mr-1"></i>Tarde
             </button>
           `;
         } else if (permitirRegistro && modoClase === "TARDE_HABILITADA") {
           botonesHTML = `
-            <button onclick="abrirModalTarde('${numFicha}', '${modulo}', '${ap.numDoc}', '${ap.nombre} ${ap.apellidos}', ${ap.tardanzas || 0}, this, '${horaAperturaStr}')" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-2 py-1.5 rounded-lg transition">
+            <button onclick="abrirModalTarde('${numFicha}', '${modulo}', '${ap.numDoc}', '${ap.nombre} ${ap.apellidos}', ${ap.tardanzas || 0}, this, '${horaAperturaStr}', true)" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-2 py-1.5 rounded-lg transition">
               <i class="fa-solid fa-clock mr-1"></i>Marcar Tarde
             </button>
           `;
@@ -1119,14 +1160,14 @@
         document.getElementById('modalNombreTestigo').innerText = datosPendientes.testigo;
         document.getElementById('modalTestigo').classList.remove('hidden');
       } else {
-        enviarMarcacion('N/A', 'Registro Asistencia');
+        enviarMarcacion('N/A', datosPendientes.motivo || 'Registro Asistencia');
       }
     }
 
-    function abrirModalTarde(ficha, modulo, numDoc, nombreCompleto, tardanzasAnteriores, btn, horaAperturaStr) {
+    function abrirModalTarde(ficha, modulo, numDoc, nombreCompleto, tardanzasAnteriores, btn, horaAperturaStr, esInstructor = false) {
       const numClase = document.getElementById('selectNumeroClase').value;
       const tiempoRespuesta = calcularTiempoRespuesta(horaAperturaStr);
-      datosPendientes = { ficha, modulo, numDoc, nombreCompleto, estado: 'Llegada Tarde', numClase, btn, tiempoRespuesta, esInstructor: true };
+      datosPendientes = { ficha, modulo, numDoc, nombreCompleto, estado: 'Llegada Tarde', numClase, btn, tiempoRespuesta, esInstructor: esInstructor, horaAperturaStr: horaAperturaStr };
       
       const nuevaCuenta = tardanzasAnteriores + 1;
       document.getElementById('infoHistorialTarde').innerHTML = `
@@ -1139,15 +1180,17 @@
 
     function confirmarTarde() {
       const motivo = document.getElementById('motivoTarde').value.trim();
-      if (!motivo) return alert("Por favor ingresa la razón de la llegada tarde.");
+      if (!motivo) return alert("Por favor ingresa la razón / motivo de la llegada tarde.");
       datosPendientes.motivo = motivo;
       cerrarModal('modalTarde');
-      enviarMarcacion('Verificado Tarde', motivo);
+      
+      const { ficha, modulo, numDoc, nombreCompleto, estado, horaAperturaStr, esInstructor } = datosPendientes;
+      iniciarMarcacion(ficha, modulo, numDoc, nombreCompleto, estado, null, horaAperturaStr, esInstructor);
     }
 
     function responderTestigo(respuesta) {
       document.getElementById('modalTestigo').classList.add('hidden');
-      enviarMarcacion(respuesta, 'Registro Asistencia');
+      enviarMarcacion(respuesta, datosPendientes.motivo || 'Registro Asistencia');
     }
 
     function enviarMarcacion(respuestaTestigo, observacion = '') {
