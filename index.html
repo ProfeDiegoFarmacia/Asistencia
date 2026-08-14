@@ -276,11 +276,12 @@
               <i class="fa-solid fa-dice text-2xl"></i>
             </div>
             <h3 class="font-bold text-slate-700 mb-1">Participación Aleatoria</h3>
+            <p class="text-[11px] text-slate-400 mb-2">(Solo entre aprendices en clase)</p>
             <div id="cuadroRuleta" class="min-h-[50px] bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-3 flex items-center justify-center my-3">
               <span id="nombrePreguntado" class="font-bold text-slate-700">¿Quién responderá?</span>
             </div>
             <button onclick="lanzarPreguntaAleatoria()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-lg shadow transition">
-              <i class="fa-solid fa-shuffle mr-2"></i>Elegir Aprendiz
+              <i class="fa-solid fa-shuffle mr-2"></i>Elegir Aprendiz Presente
             </button>
           </div>
         </div>
@@ -730,19 +731,25 @@
       const claveClase = "Clase " + numClase;
       const registrosClaseActual = historialCompleto.filter(h => String(h.ficha) === String(numFicha) && String(h.modulo) === String(modulo) && String(h.clase) === claveClase);
 
+      let htmlPresentesYTardes = "";
+      let htmlSinMarcar = "";
+
       lista.forEach(ap => {
         const regAprendiz = registrosClaseActual.find(r => String(r.numDoc) === String(ap.numDoc));
         
         let badgeClaseActual = '<span class="bg-amber-200 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400">⏳ En Espera</span>';
         let estiloTarjeta = 'bg-amber-50/60 border-amber-200 hover:bg-amber-100/50';
+        let estaEnClase = false;
 
         if (regAprendiz) {
           if (regAprendiz.estado === "Presente") {
             cantPresentes++;
+            estaEnClase = true;
             badgeClaseActual = '<span class="bg-emerald-200 text-emerald-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-400">✓ Presente</span>';
             estiloTarjeta = 'bg-emerald-100/80 border-emerald-300 hover:bg-emerald-100 shadow-sm';
           } else if (regAprendiz.estado === "Llegada Tarde") {
             cantTardes++;
+            estaEnClase = true;
             badgeClaseActual = '<span class="bg-amber-300 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500">⏱️ Tarde</span>';
             estiloTarjeta = 'bg-amber-100 border-amber-300 hover:bg-amber-150';
           } else if (regAprendiz.estado === "Inasistencia Justificada") {
@@ -788,7 +795,7 @@
           </button>
         `;
 
-        cont.innerHTML += `
+        const tarjetaHTML = `
           <div class="item-aprendiz flex flex-col md:flex-row md:items-center justify-between p-3.5 border-2 rounded-xl transition gap-3 ${estiloTarjeta}" data-nombre="${ap.nombre.toLowerCase()} ${ap.apellidos.toLowerCase()}" data-doc="${ap.numDoc}">
             <div>
               <div class="flex items-center space-x-2">
@@ -803,7 +810,34 @@
             </div>
           </div>
         `;
+
+        if (estaEnClase) {
+          htmlPresentesYTardes += tarjetaHTML;
+        } else {
+          htmlSinMarcar += tarjetaHTML;
+        }
       });
+
+      let htmlFinal = "";
+      if (htmlPresentesYTardes !== "") {
+        htmlFinal += `
+          <div class="space-y-2 mb-4">
+            <h4 class="text-xs font-extrabold uppercase text-emerald-800 tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-user-check"></i> En Clase (${cantPresentes + cantTardes})</h4>
+            ${htmlPresentesYTardes}
+          </div>
+        `;
+      }
+
+      if (htmlSinMarcar !== "") {
+        htmlFinal += `
+          <div class="space-y-2 border-t pt-3">
+            <h4 class="text-xs font-extrabold uppercase text-amber-700 tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-user-clock"></i> Pendientes por Ingresar (${cantSinMarcar})</h4>
+            ${htmlSinMarcar}
+          </div>
+        `;
+      }
+
+      cont.innerHTML = htmlFinal || '<p class="text-slate-400 text-center py-8">No hay aprendices registrados en esta ficha.</p>';
 
       document.getElementById('cantClasePresentes').innerText = cantPresentes;
       document.getElementById('cantClaseTardes').innerText = cantTardes;
@@ -1314,12 +1348,27 @@
     function lanzarPreguntaAleatoria() {
       const numFicha = document.getElementById('selectFichaActiva').value;
       const modulo = document.getElementById('selectModuloActivo').value;
+      const numClase = document.getElementById('selectNumeroClase').value;
+
       if (!numFicha || !modulo || !fichasGuardadas[numFicha] || !fichasGuardadas[numFicha].modulos[modulo]) {
         return alert("Selecciona primero una Ficha y Módulo.");
       }
-      const lista = fichasGuardadas[numFicha].modulos[modulo];
-      const index = Math.floor(Math.random() * lista.length);
-      document.getElementById('nombrePreguntado').innerText = `${lista[index].nombre} ${lista[index].apellidos}`;
+
+      const claveClase = "Clase " + numClase;
+      const registrosClaseActual = historialCompleto.filter(h => 
+        String(h.ficha) === String(numFicha) && 
+        String(h.modulo) === String(modulo) && 
+        String(h.clase) === claveClase &&
+        (h.estado === "Presente" || h.estado === "Llegada Tarde")
+      );
+
+      if (registrosClaseActual.length === 0) {
+        document.getElementById('nombrePreguntado').innerText = "⚠️ Nadie ha marcado asistencia aún";
+        return;
+      }
+
+      const index = Math.floor(Math.random() * registrosClaseActual.length);
+      document.getElementById('nombrePreguntado').innerText = registrosClaseActual[index].nombre;
     }
   </script>
 </body>
