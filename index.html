@@ -481,7 +481,7 @@
 
   <script>
     // URL BACKEND APPS SCRIPT
-    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbzXGbhtL13K_iAMK7HCT1AxwDZmzRjNPEYGZdu276B4NYqOakaxx7S2Io57czNZdqWX/exec";
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxC7991t5q6UBQj1bGQG4zgGb9zllMOh1bvNGC0pubZvK8SdEraFEyJKenvby45Zivt/exec";
     const PIN_INSTRUCTOR = "320811";
     
     let fichasGuardadas = {};
@@ -696,7 +696,6 @@
 
       const minutosClase = calcularMinutosTranscurridos(infoClase.horaApertura);
 
-      // SI PASARON MÁS DE 15 MINUTOS O ESTÁ EN ESTADO TARDE, SE EXIGE MOTIVO
       if (minutosClase > 15 || infoClase.estado === "TARDE_HABILITADA") {
         abrirModalTarde(numFicha, modulo, aprendiz.numDoc, `${aprendiz.nombre} ${aprendiz.apellidos}`, aprendiz.tardanzas || 0, null, infoClase.horaApertura, false);
       } else {
@@ -1035,13 +1034,15 @@
           else if (n.estado === "Llegada Tarde") badgeEstado = '<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">Llegada Tarde</span>';
           else if (n.estado === "Inasistencia Justificada") badgeEstado = '<span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">Excusa Médica / Permiso</span>';
 
+          const detObs = n.justificacionTardanza ? `${n.observacion} - Justificación: ${n.justificacionTardanza}` : n.observacion;
+
           tbodyNov.innerHTML += `
             <tr class="hover:bg-slate-50 transition">
               <td class="p-2 font-bold text-slate-800">${n.clase}</td>
               <td class="p-2 text-slate-500">${new Date(n.fecha).toLocaleString()}</td>
               <td class="p-2 text-center">${badgeEstado}</td>
               <td class="p-2 text-center text-slate-500 font-mono">${n.tiempoRegistro}</td>
-              <td class="p-2 text-slate-700 italic">${n.observacion || 'Sin observación'}</td>
+              <td class="p-2 text-slate-700 italic">${detObs || 'Sin observación'}</td>
             </tr>
           `;
         });
@@ -1151,6 +1152,8 @@
         numClase, 
         btn, 
         tiempoRespuesta, 
+        motivo: (datosPendientes && datosPendientes.motivo) ? datosPendientes.motivo : 'Registro Asistencia',
+        justificacionTardanza: (datosPendientes && datosPendientes.justificacionTardanza) ? datosPendientes.justificacionTardanza : '',
         testigo: testigo ? `${testigo.nombre} ${testigo.apellidos}` : 'N/A', 
         esInstructor: esInstructor 
       };
@@ -1160,7 +1163,7 @@
         document.getElementById('modalNombreTestigo').innerText = datosPendientes.testigo;
         document.getElementById('modalTestigo').classList.remove('hidden');
       } else {
-        enviarMarcacion('N/A', datosPendientes.motivo || 'Registro Asistencia');
+        enviarMarcacion('N/A', datosPendientes.motivo);
       }
     }
 
@@ -1181,7 +1184,8 @@
     function confirmarTarde() {
       const motivo = document.getElementById('motivoTarde').value.trim();
       if (!motivo) return alert("Por favor ingresa la razón / motivo de la llegada tarde.");
-      datosPendientes.motivo = motivo;
+      datosPendientes.motivo = "Llegada Tarde";
+      datosPendientes.justificacionTardanza = motivo;
       cerrarModal('modalTarde');
       
       const { ficha, modulo, numDoc, nombreCompleto, estado, horaAperturaStr, esInstructor } = datosPendientes;
@@ -1190,12 +1194,13 @@
 
     function responderTestigo(respuesta) {
       document.getElementById('modalTestigo').classList.add('hidden');
-      enviarMarcacion(respuesta, datosPendientes.motivo || 'Registro Asistencia');
+      const obs = (datosPendientes && datosPendientes.motivo) ? datosPendientes.motivo : 'Registro Asistencia';
+      enviarMarcacion(respuesta, obs);
     }
 
     function enviarMarcacion(respuestaTestigo, observacion = '') {
       if (!datosPendientes) return;
-      const { ficha, modulo, numDoc, nombreCompleto, estado, numClase, btn, testigo, motivo, tiempoRespuesta, esInstructor } = datosPendientes;
+      const { ficha, modulo, numDoc, nombreCompleto, estado, numClase, btn, testigo, motivo, tiempoRespuesta, esInstructor, justificacionTardanza } = datosPendientes;
 
       if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
 
@@ -1212,6 +1217,7 @@
           testigo: testigo || 'N/A',
           respuestaTestigo: respuestaTestigo,
           motivo: motivo || observacion,
+          justificacionTardanza: justificacionTardanza || '',
           tiempoRegistro: tiempoRespuesta || 'N/A',
           esInstructor: esInstructor
         })
